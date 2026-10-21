@@ -160,14 +160,14 @@ export default function Host() {
 
   if (!state) return <CrtFrame><div className="h-full grid place-items-center font-pixel text-neon-blue glow blink">CARREGANDO...</div></CrtFrame>;
 
-  const joinUrl = `${window.location.origin}/play?room=${code}`;
+  const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}play?room=${code}`;
   const r = state.room;
 
   const newRoom = () => {
     if (!window.confirm('Criar uma sala nova? A partida atual será abandonada.')) return;
     const c = randomCode();
     localStorage.setItem('ludo:host-room', c);
-    window.history.replaceState(null, '', `/host?room=${c}`);
+    window.history.replaceState(null, '', `${import.meta.env.BASE_URL}host?room=${c}`);
     setCode(c);
     setLog([]);
   };
