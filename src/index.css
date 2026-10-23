@@ -249,3 +249,16 @@ button.gcard:active { transform: scale(0.97); }
   100% { transform: translateY(0) scale(1, 1); }
 }
 .pawn-hop { animation: pawnhop .2s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
+
+/* pagamentos: moedas voando de quem paga até quem recebe */
+@keyframes coinfly {
+  0% { left: 0; opacity: 0; transform: translateY(-50%) scale(.6) rotate(0deg); }
+  15% { opacity: 1; }
+  50% { transform: translateY(-130%) scale(1.1) rotate(180deg); }
+  100% { left: calc(100% - 1.5rem); opacity: 0; transform: translateY(-50%) scale(.8) rotate(360deg); }
+}
+.money-coin { animation: coinfly 1.4s ease-in both; }
+@keyframes moneyminus { 0% { transform: translateY(0) scale(1.4); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(18px) scale(1); opacity: .35; } }
+.money-minus { animation: moneyminus 2s ease-out both; }
+@keyframes moneyplus { 0%, 45% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.money-to { animation: moneyplus 1.8s ease-out both; }

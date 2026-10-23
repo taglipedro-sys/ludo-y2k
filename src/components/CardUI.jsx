@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CARDS, CARD_IDS, CATEGORIES, COLOR_HEX, MAX_HAND, POINTS } from '../game/constants.js';
 import { absTile, isRingProgress, modeConfig } from '../game/board.js';
 import { CardBack, GameCard } from './GameCard.jsx';
@@ -101,6 +101,15 @@ export function CardSheet({ cardId, state, me, myTurn, send, onClose }) {
   else if (r.turn.cardUsed) blocked = 'Você já usou uma carta neste turno.';
   else if (cardId === 'dado_duplo' && r.turn.phase !== 'ROLL') blocked = 'Use antes de rolar o dado.';
 
+  // enquanto escolhe a casa do pedágio, a TV mostra os números das casas
+  const pickingToll = cardId === 'pedagio' && !blocked;
+  useEffect(() => {
+    if (!pickingToll) return undefined;
+    send({ type: 'TOLL_PICK', playerId: me.id, on: true, tile });
+    return undefined;
+  }, [pickingToll, tile]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (pickingToll) send({ type: 'TOLL_PICK', playerId: me.id, on: false }); }, [pickingToll]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const targetPawns = tp ? state.players.find((p) => p.id === tp).pawns.filter((p) => isRingProgress(cfg, p.position)) : [];
   const ready = {
     dado_duplo: true,
@@ -156,11 +165,13 @@ export function CardSheet({ cardId, state, me, myTurn, send, onClose }) {
           )}
           {cardId === 'pedagio' && (
             <div>
-              <div className="text-[10px] opacity-70 mb-2">NÚMERO DA CASA (0–{cfg.ring - 1}) · aparece 🚧 na TV</div>
+              <div className="text-[10px] opacity-70 mb-2">NÚMERO DA CASA (0–{cfg.ring - 1}) · os números aparecem no tabuleiro da TV. O pedágio fica até alguém passar e pagar</div>
               <div className="flex items-center gap-3">
+                <button className="pixel-btn px-3 py-2" onClick={() => setTile((t) => (t + cfg.ring - 5) % cfg.ring)}>−5</button>
                 <button className="pixel-btn px-3 py-2" onClick={() => setTile((t) => (t + cfg.ring - 1) % cfg.ring)}>−</button>
                 <div className="font-pixel text-2xl w-16 text-center">{tile}</div>
                 <button className="pixel-btn px-3 py-2" onClick={() => setTile((t) => (t + 1) % cfg.ring)}>+</button>
+                <button className="pixel-btn px-3 py-2" onClick={() => setTile((t) => (t + 5) % cfg.ring)}>+5</button>
               </div>
             </div>
           )}

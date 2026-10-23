@@ -40,6 +40,8 @@ export default function Host() {
   const [diceShow, setDiceShow] = useState(null);
   const [cardShow, setCardShow] = useState(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [confirmNew, setConfirmNew] = useState(false);
+  const [money, setMoney] = useState(null);
 
   useEffect(() => {
     const unlock = () => unlockAudio();
@@ -59,10 +61,11 @@ export default function Host() {
   const walk = (key, from, to, cfg) => {
     clearKey(key);
     const path = [];
+    if (from === to) return 0;
     if (from === 'BASE') path.push(to);
     else if (to > from) for (let p = from + 1; p <= to; p++) path.push(p);
     else for (let p = from - 1; p >= to; p--) path.push(p);
-    if (!path.length) return 0;
+    if (!path.length) { setAnim((a) => { const n = { ...a }; delete n[key]; return n; }); return 0; }
     const t0 = 80;
     setAnim((a) => ({ ...a, [key]: from === 'BASE' ? 'BASE' : from }));
     const list = [];
@@ -79,6 +82,8 @@ export default function Host() {
       delete timers.current[key];
     }, total));
     timers.current[key] = list;
+    // segurança: se algo falhar, solta o peão e libera os alertas
+    list.push(setTimeout(() => setAnim((a) => { if (a[key] === undefined) return a; const n = { ...a }; delete n[key]; return n; }), total + 1500));
     return total;
   };
 
@@ -125,7 +130,9 @@ export default function Host() {
         }
         case 'CARD_PLAYED': {
           const who = st.players.find((p) => p.id === ev.playerId);
-          setCardShow({ id: batch.id, cardId: ev.cardId, name: who?.name, color: COLOR_HEX[who?.color] || '#ffe62a' });
+          const cid = batch.id;
+          setCardShow({ id: cid, cardId: ev.cardId, name: who?.name, color: COLOR_HEX[who?.color] || '#ffe62a' });
+          setTimeout(() => setCardShow((c) => (c && c.id === cid ? null : c)), 3400); // garante que a carta sai da tela
           break;
         }
         case 'CAPTURE': {
@@ -135,6 +142,17 @@ export default function Host() {
             setShake(true); setTimeout(() => setShake(false), 750);
             if (t) { setBooms((b) => [...b, { id, x: t.x, y: t.y }]); setTimeout(() => setBooms((b) => b.filter((x) => x.id !== id)), 1000); }
             sfx.ko();
+          });
+          break;
+        }
+        case 'PAID': case 'IMPOSTO': {
+          const fromId = ev.type === 'PAID' ? ev.playerId : ev.targetId;
+          const toId = ev.type === 'PAID' ? ev.toId : ev.playerId;
+          const mid = `${batch.id}-${ev.type}`;
+          later(() => {
+            sfx.cash();
+            setMoney({ id: mid, fromId, toId, amount: ev.amount, snapshot: st.players.map((p) => ({ id: p.id, name: p.name, color: p.color })) });
+            setTimeout(() => setMoney((m) => (m && m.id === mid ? null : m)), 2600);
           });
           break;
         }
@@ -158,19 +176,29 @@ export default function Host() {
 
   const walking = Object.keys(anim).length > 0;
 
+  // Fim de partida: nada pode ficar preso na frente do placar final.
+  const status = state?.room.status;
+  useEffect(() => {
+    if (status === 'FINISHED') { setCardShow(null); setDiceShow(null); setBanner(null); setMoney(null); setRoulette(null); }
+  }, [status]);
+
   if (!state) return <CrtFrame><div className="h-full grid place-items-center font-pixel text-neon-blue glow blink">CARREGANDO...</div></CrtFrame>;
 
   const joinUrl = `${window.location.origin}${import.meta.env.BASE_URL}play?room=${code}`;
   const r = state.room;
 
-  const newRoom = () => {
-    if (!window.confirm('Criar uma sala nova? A partida atual será abandonada.')) return;
+  // Cria uma sala nova (sem janela do navegador: muitas TVs bloqueiam confirm()).
+  const startNewRoom = () => {
     const c = randomCode();
     localStorage.setItem('ludo:host-room', c);
     window.history.replaceState(null, '', `${import.meta.env.BASE_URL}host?room=${c}`);
+    Object.keys(timers.current).forEach(clearKey);
+    setAnim({}); setDiceShow(null); setCardShow(null); setBanner(null); setRoulette(null); setMoney(null);
+    setConfirmEnd(false); setConfirmNew(false);
+    setDice(null); setBooms([]); setLog([]);
     setCode(c);
-    setLog([]);
   };
+  const newRoom = () => setConfirmNew(true);
 
   return (
     <div className="h-full p-2 bg-black">
@@ -194,6 +222,19 @@ export default function Host() {
           <Roulette key={roulette.id} players={state.players} candidates={roulette.candidates} winnerId={roulette.winnerId}
             spin={roulette.spin} onDone={() => setRoulette(null)} />
         )}
+        {confirmNew && (
+          <div className="absolute inset-0 z-50 grid place-items-center" style={{ background: 'rgba(5,2,13,.85)' }}>
+            <div className="pop-in border-4 border-neon-red bg-black p-8 text-center max-w-md">
+              <div className="font-pixel text-lg text-neon-red glow">CRIAR SALA NOVA?</div>
+              <div className="text-sm opacity-80 mt-3">A partida atual será abandonada e os jogadores precisam entrar de novo pelo QR Code.</div>
+              <div className="flex gap-4 justify-center mt-6">
+                <button className="pixel-btn ghost" onClick={() => setConfirmNew(false)}>VOLTAR</button>
+                <button className="pixel-btn" style={{ '--c': '#ff2a55' }} onClick={startNewRoom}>CRIAR</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {money && <MoneyFx key={money.id} money={money} />}
         {confirmEnd && r.status === 'PLAYING' && (
           <div className="absolute inset-0 z-50 grid place-items-center" style={{ background: 'rgba(5,2,13,.85)' }}>
             <div className="pop-in border-4 border-neon-red bg-black p-8 text-center max-w-md">
@@ -206,7 +247,7 @@ export default function Host() {
             </div>
           </div>
         )}
-        {r.status === 'FINISHED' && !walking && <Winner state={state} apply={apply} newRoom={newRoom} />}
+        {r.status === 'FINISHED' && !walking && <Winner state={state} apply={apply} newRoom={startNewRoom} />}
         {r.status !== 'LOBBY' && (
           <div className="absolute bottom-3 right-5 z-20 font-pixel text-[9px] opacity-60">SALA {code} · {TRANSPORT_MODE === 'local' ? 'MODO LOCAL' : 'ONLINE'}</div>
         )}
@@ -288,6 +329,9 @@ function Game({ state, booms, log, dice, anim, onEnd }) {
                 <Dice key={`${dice.id}-${i}`} value={d} size={44} animate={false} accent={COLOR_HEX[cur.color]} glow={COLOR_HEX[cur.color]} />
               ))
               : <span className="text-xs opacity-60">aguardando dado…</span>}
+            {dice && dice.playerId === r.current_turn_player_id && dice.dice.length === 2 && (
+              <span className="font-pixel text-lg text-white">= {dice.dice[0] + dice.dice[1]}</span>
+            )}
             {r.turn?.double && <span className="text-[10px] text-neon-yellow">DADO DUPLO!</span>}
           </div>
         </div>
@@ -347,7 +391,7 @@ function Winner({ state, apply, newRoom }) {
   const ended = state.room.ended_early;
   const rank = [...state.players].sort((a, b) => b.points - a.points);
   return (
-    <div className="absolute inset-0 z-40 grid place-items-center text-center" style={{ background: 'rgba(5,2,13,.9)' }}>
+    <div className="absolute inset-0 z-[60] grid place-items-center text-center" style={{ background: 'rgba(5,2,13,.9)' }}>
       <div className="pop-in flex flex-col items-center gap-3">
         <div style={{ width: 180, height: 188 }}><Mascot color={w?.color} /></div>
         <div className="text-4xl -mt-2">{ended ? '🏁' : '🏆'}</div>
@@ -386,6 +430,31 @@ function CardPlayed({ show, onDone }) {
       <div className="dice-overlay-box" style={{ gap: 18 }}>
         <div className="font-pixel text-xl glow" style={{ color: show.color }}>{show.name} USOU</div>
         <div className="pop-in"><GameCard cardId={show.cardId} size="xl" showDesc /></div>
+      </div>
+    </div>
+  );
+}
+
+// Animação de pagamento: valor sai de quem paga (vermelho) e as moedas voam até quem recebe (verde).
+function MoneyFx({ money }) {
+  const who = (id) => money.snapshot.find((p) => p.id === id);
+  const from = who(money.fromId), to = who(money.toId);
+  return (
+    <div className="absolute inset-0 z-[45] grid place-items-center pointer-events-none" style={{ background: 'rgba(5,2,13,.55)' }}>
+      <div className="flex items-center gap-10">
+        <div className="text-center money-from">
+          <div className="font-pixel text-xs" style={{ color: COLOR_HEX[from?.color] || '#fff' }}>{from?.name || 'BANCO'}</div>
+          <div className="font-pixel text-5xl text-neon-red glow money-minus">-{money.amount} 🪙</div>
+        </div>
+        <div className="relative w-56 h-16">
+          {Array.from({ length: 7 }, (_, i) => (
+            <span key={i} className="money-coin text-3xl absolute top-1/2" style={{ animationDelay: `${i * 0.12}s` }}>🪙</span>
+          ))}
+        </div>
+        <div className="text-center money-to">
+          <div className="font-pixel text-xs" style={{ color: COLOR_HEX[to?.color] || '#fff' }}>{to ? to.name : 'BANCO'}</div>
+          <div className="font-pixel text-5xl text-neon-green glow">{to ? `+${money.amount} 🪙` : '💸'}</div>
+        </div>
       </div>
     </div>
   );

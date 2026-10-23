@@ -105,15 +105,16 @@ test('captura: +30 pts, peão volta à base e Vingança faz o agressor beber 2',
   assert.ok(reduce(s, { type: 'ROLL', playerId: 'player_2' }, dieRng(1)).error);
 });
 
-test('casas de saída são seguras', () => {
+test('casa de saída NÃO é segura: peão inimigo parado nela é comido', () => {
   let s = started(['Ana', 'Bia']);
   s = edit(s, (c) => {
     c.players[0].pawns[0].position = 12; // tile 12 (bebida) -> +1 = tile 13 (saída do player_2)
     c.players[1].pawns[0].position = 0; // tile 13
   });
   s = run(s, { type: 'ROLL', playerId: 'player_1' }, dieRng(1)).state;
-  s = run(s, { type: 'MOVE', playerId: 'player_1', pawnId: 0 }).state;
-  assert.equal(s.players[1].pawns[0].position, 0);
+  const r = run(s, { type: 'MOVE', playerId: 'player_1', pawnId: 0 });
+  assert.equal(r.state.players[1].pawns[0].position, 'BASE');
+  assert.ok(r.events.some((e) => e.type === 'CAPTURE'));
 });
 
 test('casa Beba ou Pague: beber dá +15; pagar custa 20', () => {
@@ -145,12 +146,12 @@ test('Escudo repassa a dose para outro jogador e não pode ser devolvida', () =>
   assert.deepEqual(s.players[0].inventory, []);
 });
 
-test('loja: sair da base por 35 pts, compra surpresa 60, direta 120, mão máx. 3', () => {
+test('loja: sair da base por 60 pts, compra surpresa 60, direta 120, mão máx. 3', () => {
   let s = started(['Ana', 'Bia']);
   s = edit(s, (c) => { c.players[0].points = 300; });
   s = run(s, { type: 'BUY_EXIT', playerId: 'player_1', pawnId: 2 }).state;
   assert.equal(s.players[0].pawns[2].position, 0);
-  assert.equal(s.players[0].points, 300 - 35 + 10);
+  assert.equal(s.players[0].points, 300 - 60 + 10);
   s = run(s, { type: 'BUY_SURPRISE', playerId: 'player_1', category: 'A' }, seq(0.5)).state;
   assert.equal(s.players[0].inventory.length, 1);
   assert.equal(CARDS[s.players[0].inventory[0]].cat, 'A');
@@ -362,7 +363,7 @@ function botStep(s, rnd) {
       targetPlayerId: o.id, targetPawnId: pick(o.pawns).id, tile: Math.floor(rnd() * 52), mode: pick(['ONE', 'ALL']), targetId: o.id };
   }
   if (t.phase === 'ROLL') {
-    if (roll < 0.25 && me.points >= 35) return { type: 'BUY_EXIT', playerId: me.id, pawnId: pick(me.pawns).id };
+    if (roll < 0.25 && me.points >= 60) return { type: 'BUY_EXIT', playerId: me.id, pawnId: pick(me.pawns).id };
     return { type: 'ROLL', playerId: me.id };
   }
   const options = [];
@@ -452,4 +453,52 @@ test('encerrar sessão: termina a partida e escolhe o líder', () => {
   assert.equal(r.state.room.winner_id, s.players[1].id);
   assert.equal(r.state.room.ended_early, true);
   assert.equal(reduce(r.state, { type: 'END_SESSION' }).error !== undefined, true);
+});
+
+test('2 dados: anda a SOMA com um único peão', () => {
+  let s = started(['Ana', 'Bia']);
+  s = edit(s, (c) => { c.players[0].inventory = ['dado_duplo']; c.players[0].pawns[0].position = 20; });
+  s = run(s, { type: 'PLAY_CARD', playerId: 'player_1', cardId: 'dado_duplo' }).state;
+  s = run(s, { type: 'ROLL', playerId: 'player_1' }, dieRng(3, 4)).state;
+  assert.deepEqual(s.room.turn.rolled, [3, 4]);
+  assert.deepEqual(s.room.turn.dice, [7]);
+  const r = run(s, { type: 'MOVE', playerId: 'player_1', pawnId: 0 });
+  assert.equal(r.state.players[0].pawns[0].position, 27);
+});
+
+test('2 dados com um 6: peão da base sai e anda o outro dado', () => {
+  let s = started(['Ana', 'Bia']);
+  s = edit(s, (c) => { c.players[0].inventory = ['dado_duplo']; });
+  s = run(s, { type: 'PLAY_CARD', playerId: 'player_1', cardId: 'dado_duplo' }).state;
+  s = run(s, { type: 'ROLL', playerId: 'player_1' }, dieRng(6, 3)).state;
+  const r = run(s, { type: 'MOVE', playerId: 'player_1', pawnId: 0 });
+  assert.equal(r.state.players[0].pawns[0].position, 3);
+});
+
+test('pedágio fica no tabuleiro até alguém passar e PAGAR; beber não remove', () => {
+  let s = started(['Ana', 'Bia']);
+  s = edit(s, (c) => { c.players[0].inventory = ['pedagio']; c.players[1].points = 50; });
+  s = run(s, { type: 'TOLL_PICK', playerId: 'player_1', on: true, tile: 20 }).state;
+  assert.equal(s.room.toll_picker.tile, 20);
+  s = run(s, { type: 'PLAY_CARD', playerId: 'player_1', cardId: 'pedagio', tile: 20 }).state;
+  assert.equal(s.room.toll_picker, null);
+  const walk = (st) => {
+    st = edit(st, (c) => {
+      c.room.current_turn_player_id = 'player_2';
+      c.room.turn = { phase: 'ROLL', dice: [], rolled: [], sixes: 0, cardUsed: false, double: false, extra: false };
+      c.room.drinks = [];
+      c.players[1].pawns[0].position = 4;
+    });
+    st = run(st, { type: 'ROLL', playerId: 'player_2' }, dieRng(5)).state;
+    return run(st, { type: 'MOVE', playerId: 'player_2', pawnId: 0 }).state;
+  };
+  let t = walk(s);
+  let toll = t.room.drinks.find((d) => d.kind === 'TOLL');
+  t = run(t, { type: 'DRINK_RESOLVE', playerId: 'player_2', drinkId: toll.id, choice: 'DRINK' }).state;
+  assert.equal(t.room.toll_booths.length, 1); // bebeu: continua lá
+  for (let i = 0; i < 6; i++) t = edit(t, (c) => { c.room.round += 1; });
+  t = walk(t);
+  toll = t.room.drinks.find((d) => d.kind === 'TOLL');
+  t = run(t, { type: 'DRINK_RESOLVE', playerId: 'player_2', drinkId: toll.id, choice: 'PAY' }).state;
+  assert.equal(t.room.toll_booths.length, 0); // pagou: some
 });

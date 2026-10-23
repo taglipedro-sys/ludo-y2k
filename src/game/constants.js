@@ -36,7 +36,7 @@ export const POINTS = {
   CAPTURE: 30,
   DRINK_TILE: 15,
   HOOKAH: 50,
-  BUY_EXIT: 35,
+  BUY_EXIT: 60,
   SURPRISE: 60,
   DIRECT: 120,
   TOLL: 20,

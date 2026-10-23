@@ -47,6 +47,13 @@ export const sfx = {
   land() { tone(150, 0.14, { type: 'triangle', vol: 0.12, slide: -60 }); noise(0.07, 0.05); },
   // peão saindo da base
   pop() { tone(330, 0.1, { type: 'square', vol: 0.06, slide: 500 }); },
+  // "cha-ching" de caixa registradora + moedas caindo
+  cash() {
+    tone(1568, 0.09, { type: 'triangle', vol: 0.09 });
+    tone(2093, 0.28, { type: 'triangle', vol: 0.09, at: 0.09 });
+    noise(0.12, 0.05, 0.09);
+    for (let i = 0; i < 6; i++) tone(2400 + (i % 3) * 300, 0.05, { type: 'square', vol: 0.03, at: 0.3 + i * 0.07 });
+  },
   coin() { tone(988, 0.07); tone(1319, 0.16, { at: 0.07 }); },
   ko() { noise(0.5, 0.1); tone(220, 0.5, { type: 'sawtooth', vol: 0.09, slide: -180 }); tone(110, 0.6, { at: 0.05, slide: -70 }); },
   alarm() { for (let i = 0; i < 6; i++) tone(i % 2 ? 880 : 660, 0.12, { at: i * 0.14, vol: 0.05 }); },

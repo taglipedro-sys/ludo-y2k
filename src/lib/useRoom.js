@@ -38,6 +38,8 @@ export function useHostRoom(code) {
   useEffect(() => {
     let closed = false;
     let ch = null;
+    stateRef.current = null; // sala trocada: não mostra a partida antiga enquanto carrega
+    setState(null);
     (async () => {
       const saved = await loadState(code);
       if (closed) return;

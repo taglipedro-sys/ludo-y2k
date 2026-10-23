@@ -75,6 +75,19 @@ export default function Board({ state, explosions = [], anim = {} }) {
         );
       })}
 
+      {/* números das casas: aparecem só enquanto alguém escolhe onde pôr o pedágio */}
+      {state.room.toll_picker && L.tiles.map((t, i) => {
+        const sel = state.room.toll_picker.tile === i;
+        return (
+          <g key={`num${i}`} style={{ pointerEvents: 'none' }}>
+            {sel && <rect x={t.x - size / 2 - 0.4} y={t.y - size / 2 - 0.4} width={size + 0.8} height={size + 0.8} rx={1.4}
+              fill="#ffe62a" fillOpacity={0.35} stroke="#ffe62a" strokeWidth={0.7} className="aura" />}
+            <text x={t.x} y={t.y + L.cell * 0.18} fontSize={L.cell * (i > 9 ? 0.5 : 0.6)} textAnchor="middle"
+              fontFamily="Press Start 2P" fill={sel ? '#fff' : '#ffe62a'} stroke="#000" strokeWidth={0.25} paintOrder="stroke">{i}</text>
+          </g>
+        );
+      })}
+
       {/* centro */}
       <circle cx={L.center.x} cy={L.center.y} r={L.cell * 1.1} fill="#05020d" stroke="#ffe62a" strokeWidth={0.6} />
       <text x={L.center.x} y={L.center.y + 2} fontSize={L.cell * 1.2} textAnchor="middle">🏁</text>

@@ -180,15 +180,30 @@ function Controller({ room, name, onLeave }) {
             )}
             {canAct && turn.phase === 'MOVE' && (
               <div>
-                <div className="text-[10px] opacity-70 mb-2">DADOS — escolha um e depois o peão</div>
-                <div className="flex gap-3">
-                  {turn.dice.map((d, i) => (
-                    <button key={`${batch.id}-${i}`} type="button" onClick={() => setDieSel(i)} className="grid place-items-center p-2 rounded-md"
-                      style={{ background: i === dieSel ? hex + '55' : '#ffffff10', outline: i === dieSel ? `3px solid ${hex}` : '3px solid transparent' }}>
-                      <Dice value={d} size={44} animate={false} accent={hex} glow={i === dieSel ? hex : 'transparent'} />
-                    </button>
-                  ))}
-                </div>
+                {turn.rolled.length === 2 && turn.dice.length === 1 ? (
+                  <>
+                    <div className="text-[10px] opacity-70 mb-2">2 DADOS SOMADOS — escolha o peão que anda tudo</div>
+                    <div className="flex items-center gap-3">
+                      <Dice value={turn.rolled[0]} size={40} animate={false} accent={hex} glow="transparent" />
+                      <span className="font-pixel text-lg">+</span>
+                      <Dice value={turn.rolled[1]} size={40} animate={false} accent={hex} glow="transparent" />
+                      <span className="font-pixel text-lg">=</span>
+                      <span className="font-pixel text-4xl glow" style={{ color: hex }}>{turn.dice[0]}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-[10px] opacity-70 mb-2">DADOS — escolha um e depois o peão</div>
+                    <div className="flex gap-3">
+                      {turn.dice.map((d, i) => (
+                        <button key={`${batch.id}-${i}`} type="button" onClick={() => setDieSel(i)} className="grid place-items-center p-2 rounded-md"
+                          style={{ background: i === dieSel ? hex + '55' : '#ffffff10', outline: i === dieSel ? `3px solid ${hex}` : '3px solid transparent' }}>
+                          <Dice value={d} size={44} animate={false} accent={hex} glow={i === dieSel ? hex : 'transparent'} />
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

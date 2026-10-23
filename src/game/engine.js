@@ -14,7 +14,8 @@ export function createRoom(code, mode = 4) {
       mode,
       current_turn_player_id: null,
       reversed_movement: false,
-      toll_booths: [], // { tile_index, owner_id, until_round }
+      toll_booths: [], // { tile_index, owner_id, until_round } (fica até alguém pagar)
+      toll_picker: null, // { playerId, tile } enquanto alguém escolhe a casa do pedágio
       hookah_votes: [],
       // extensões do esquema base:
       round: 1,
@@ -47,7 +48,12 @@ export function computeMove(s, player, pawn, die) {
   const cfg = cfgOf(s);
   const finish = finishOf(cfg);
   if (pawn.status === 'FINISHED') return null;
-  if (pawn.position === 'BASE') return die === 6 ? { from: 'BASE', to: 0, kind: 'EXIT' } : null;
+  if (pawn.position === 'BASE') {
+    const rolled = s.room.turn?.rolled || [];
+    const summed = rolled.length === 2 && rolled[0] + rolled[1] === die; // 2 dados somados
+    if (summed) return rolled.includes(6) ? { from: 'BASE', to: die - 6, kind: 'EXIT' } : null; // sai com o 6 e anda o outro dado
+    return die === 6 ? { from: 'BASE', to: 0, kind: 'EXIT' } : null;
+  }
   const p = pawn.position;
   if (s.room.reversed_movement && isRingProgress(cfg, p)) {
     const np = p - die;
@@ -80,6 +86,7 @@ function addDrink(s, events, playerId, shots, reason, opts = {}) {
     canPay: !!opts.canPay,
     payCost: opts.payCost || 0,
     payTo: opts.payTo || null,
+    boothTile: opts.boothTile ?? null,
     reward: opts.reward || 0,
   };
   s.room.drinks.push(d);
@@ -104,7 +111,7 @@ function nextTurn(s, events) {
   }
   if (n <= idx) s.room.round += 1;
   const round = s.room.round;
-  s.room.toll_booths = s.room.toll_booths.filter((b) => b.until_round > round);
+  s.room.toll_picker = null;
   if (s.room.reversed_movement && s.room.chaos_until <= round) {
     s.room.reversed_movement = false;
     events.push({ type: 'CAOS_END' });
@@ -177,9 +184,9 @@ function applyMove(s, events, player, pawn, mv, rng = rngDefault) {
     for (let q = mv.from === 'BASE' ? mv.to : from + step; step > 0 ? q <= mv.to : q >= mv.to; q += step) {
       if (!isRingProgress(cfg, q)) break;
       const tile = absTile(cfg, player.seat, q);
-      const booth = s.room.toll_booths.find((b) => b.tile_index === tile && b.owner_id !== player.id && b.until_round > round);
+      const booth = s.room.toll_booths.find((b) => b.tile_index === tile && b.owner_id !== player.id);
       if (booth) {
-        addDrink(s, events, player.id, 1, 'PEDAGIO', { kind: 'TOLL', canPay: true, payCost: POINTS.TOLL, payTo: booth.owner_id });
+        addDrink(s, events, player.id, 1, 'PEDAGIO', { kind: 'TOLL', canPay: true, payCost: POINTS.TOLL, payTo: booth.owner_id, boothTile: booth.tile_index });
       }
       if (mv.from === 'BASE') break;
     }
@@ -188,7 +195,7 @@ function applyMove(s, events, player, pawn, mv, rng = rngDefault) {
   // Captura e casa de bebida (somente na pista).
   if (isRingProgress(cfg, mv.to)) {
     const tile = absTile(cfg, player.seat, mv.to);
-    if (!isStartTile(cfg, tile)) {
+    {
       for (const other of s.players) {
         if (other.id === player.id) continue;
         for (const op of other.pawns) {
@@ -338,11 +345,22 @@ H.REMATCH = (s, a, ev) => {
   s.room.turn = null;
   s.room.drinks = [];
   s.room.toll_booths = [];
+  s.room.toll_picker = null;
   s.room.hookah_votes = [];
   s.room.current_turn_player_id = null;
   s.room.winner_id = null;
   s.room.reversed_movement = false;
   ev.push({ type: 'REMATCH' });
+  return null;
+};
+
+// Mostra os números das casas na TV enquanto o jogador escolhe onde pôr o pedágio.
+H.TOLL_PICK = (s, a) => {
+  if (s.room.status !== 'PLAYING') return null;
+  if (!a.on) { if (s.room.toll_picker?.playerId === a.playerId) s.room.toll_picker = null; return null; }
+  const p = byId(s, a.playerId);
+  if (!p || s.room.current_turn_player_id !== p.id || !p.inventory.includes('pedagio')) return null;
+  s.room.toll_picker = { playerId: p.id, tile: Number.isInteger(a.tile) ? a.tile : null };
   return null;
 };
 
@@ -360,7 +378,7 @@ H.ROLL = (s, a, ev, rng) => {
   const n = t.double ? 2 : 1;
   const dice = Array.from({ length: n }, () => 1 + randInt(rng, 6));
   t.rolled = [...dice];
-  t.dice = [...dice];
+  t.dice = n === 2 ? [dice[0] + dice[1]] : [...dice]; // dado duplo: anda a SOMA com um único peão
   t.phase = 'MOVE';
   const sixes = dice.filter((d) => d === 6).length;
   if (sixes) t.sixes += 1;
@@ -493,8 +511,9 @@ H.PLAY_CARD = (s, a, ev) => {
       if (!Number.isInteger(tile) || tile < 0 || tile >= cfg.ring) return 'Casa inválida.';
       if (isStartTile(cfg, tile)) return 'Não dá para pôr pedágio em casa de saída.';
       if (s.room.toll_booths.some((b) => b.tile_index === tile)) return 'Já existe um pedágio nessa casa.';
-      s.room.toll_booths = s.room.toll_booths.filter((b) => b.owner_id !== p.id);
-      s.room.toll_booths.push({ tile_index: tile, owner_id: p.id, until_round: s.room.round + 1 });
+      // o pedágio fica no tabuleiro até alguém passar e pagar
+      s.room.toll_booths.push({ tile_index: tile, owner_id: p.id, until_round: 999999 });
+      s.room.toll_picker = null;
       ev.push({ type: 'TOLL_PLACED', playerId: p.id, tile });
       break;
     }
@@ -583,6 +602,7 @@ H.DRINK_RESOLVE = (s, a, ev) => {
       const owner = byId(s, d.payTo);
       if (owner) owner.points += d.payCost;
     }
+    if (d.kind === 'TOLL' && d.boothTile != null) s.room.toll_booths = s.room.toll_booths.filter((b) => b.tile_index !== d.boothTile);
     ev.push({ type: 'PAID', playerId: p.id, amount: d.payCost, toId: d.payTo });
     drop();
     return null;
