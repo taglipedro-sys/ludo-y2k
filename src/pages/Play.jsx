@@ -134,7 +134,7 @@ function Controller({ room, name, onLeave }) {
       </div>
 
       {toast && (
-        <div key={toast.id} className="fixed top-14 inset-x-3 z-50 pop-in bg-neon-red text-black font-pixel text-[10px] p-3 border-2 border-white">{toast.text}</div>
+        <div key={`toast-${toast.id}`} className="fixed top-14 inset-x-3 z-50 pop-in bg-neon-red text-black font-pixel text-[10px] p-3 border-2 border-white">{toast.text}</div>
       )}
 
       <div className="flex-1 p-4 pb-28 flex flex-col gap-4">
@@ -275,7 +275,7 @@ function Controller({ room, name, onLeave }) {
       )}
 
       {rollShow && (
-        <DiceOverlay key={rollShow.id} roll={rollShow} label="VOCÊ ROLOU" color={hex} size={92} fixed onDone={() => setRollShow(null)} />
+        <DiceOverlay key={`roll-${rollShow.id}`} roll={rollShow} label="VOCÊ ROLOU" color={hex} size={92} fixed onDone={() => setRollShow(null)} />
       )}
       {reveal && (
         <Overlay onClose={() => setReveal(null)}>

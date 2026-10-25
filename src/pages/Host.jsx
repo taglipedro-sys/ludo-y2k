@@ -211,15 +211,15 @@ export default function Host() {
 
         {/* alertas globais */}
         {r.status === 'PLAYING' && !walking && r.drinks.length > 0 && <DrinkAlert state={state} />}
-        {cardShow && <CardPlayed key={cardShow.id} show={cardShow} onDone={() => setCardShow(null)} />}
-        {diceShow && <DiceOverlay key={diceShow.id} roll={diceShow} color={diceShow.color} size={130} onDone={() => setDiceShow(null)} />}
+        {cardShow && <CardPlayed key={`card-${cardShow.id}`} show={cardShow} onDone={() => setCardShow(null)} />}
+        {diceShow && <DiceOverlay key={`dice-${diceShow.id}`} roll={diceShow} color={diceShow.color} size={130} onDone={() => setDiceShow(null)} />}
         {banner && (
-          <div key={banner.id} className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pop-in font-pixel text-neon-yellow glow text-lg bg-black/80 border-4 border-neon-yellow px-6 py-3">
+          <div key={`banner-${banner.id}`} className="absolute top-6 left-1/2 -translate-x-1/2 z-30 pop-in font-pixel text-neon-yellow glow text-lg bg-black/80 border-4 border-neon-yellow px-6 py-3">
             {banner.text}
           </div>
         )}
         {roulette && (
-          <Roulette key={roulette.id} players={state.players} candidates={roulette.candidates} winnerId={roulette.winnerId}
+          <Roulette key={`roulette-${roulette.id}`} players={state.players} candidates={roulette.candidates} winnerId={roulette.winnerId}
             spin={roulette.spin} onDone={() => setRoulette(null)} />
         )}
         {confirmNew && (
@@ -234,7 +234,7 @@ export default function Host() {
             </div>
           </div>
         )}
-        {money && <MoneyFx key={money.id} money={money} />}
+        {money && <MoneyFx key={`money-${money.id}`} money={money} />}
         {confirmEnd && r.status === 'PLAYING' && (
           <div className="absolute inset-0 z-50 grid place-items-center" style={{ background: 'rgba(5,2,13,.85)' }}>
             <div className="pop-in border-4 border-neon-red bg-black p-8 text-center max-w-md">
@@ -314,14 +314,12 @@ function Game({ state, booms, log, dice, anim, onEnd }) {
     <div className="h-full flex gap-4 p-6">
       <div className="h-full aspect-square shrink-0 relative">
         <Board state={state} explosions={booms} anim={anim} />
-        {r.reversed_movement && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 font-pixel text-[10px] text-neon-purple glow blink">⟲ CAOS: MOVIMENTO INVERTIDO ⟲</div>
-        )}
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col gap-3">
         <div className="border-2 p-3 glow-box" style={{ color: cur ? COLOR_HEX[cur.color] : '#fff' }}>
           <div className="font-pixel text-[10px] opacity-80">RODADA {r.round} · VEZ DE</div>
+          {r.reversed_movement && <div className="font-pixel text-[10px] text-neon-purple glow blink mt-1">⟲ CAOS: MOVIMENTO INVERTIDO ⟲</div>}
           <div className="font-pixel text-xl mt-1">▶ {cur?.name}</div>
           <div className="flex items-center gap-2 mt-2 min-h-[44px]">
             {dice && dice.playerId === r.current_turn_player_id

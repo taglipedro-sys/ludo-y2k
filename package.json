@@ -7,7 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test src/game/engine.test.js"
+    "test": "node --test src/game/engine.test.js src/overlay-keys.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
