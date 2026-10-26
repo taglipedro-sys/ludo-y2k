@@ -59,14 +59,14 @@ function crossLayout() {
   const bases = [];
   for (let s = 0; s < 4; s++) {
     homes.push([1, 2, 3, 4, 5].map((x) => { const [rx, ry] = rot(x, 7, s); return c(rx, ry); }));
-    const slots = [[2, 2], [4, 2], [2, 4], [4, 4]].map(([x, y]) => { const [rx, ry] = rot(x, y, s); return c(rx, ry); });
+    const slots = [[2.3, 2.3], [3.7, 2.3], [2.3, 3.7], [3.7, 3.7]].map(([x, y]) => { const [rx, ry] = rot(x, y, s); return c(rx, ry); });
     bases.push(slots);
   }
   return { kind: 'cross', cell, tiles, homes, bases, center: c(7, 7) };
 }
 
 function hexLayout() {
-  const cx = 50, cy = 50, r = 33;
+  const cx = 50, cy = 50, r = 36;
   const V = [];
   for (let k = 0; k < 6; k++) {
     const a = ((-90 + 60 * k) * Math.PI) / 180;
@@ -81,11 +81,11 @@ function hexLayout() {
   for (let s = 0; s < 6; s++) {
     const v = V[s];
     homes.push([1, 2, 3, 4, 5].map((n) => ({ x: v.x + ((cx - v.x) * n) / 6.4, y: v.y + ((cy - v.y) * n) / 6.4 })));
-    const out = { x: cx + (v.x - cx) * 1.3, y: cy + (v.y - cy) * 1.3 };
+    const out = { x: cx + (v.x - cx) * 1.24, y: cy + (v.y - cy) * 1.24 };
     const dx = -(v.y - cy) / r, dy = (v.x - cx) / r; // perpendicular
-    bases.push([-1, 0, 1].map((n) => ({ x: out.x + dx * n * 6, y: out.y + dy * n * 6 })));
+    bases.push([-1, 0, 1].map((n) => ({ x: out.x + dx * n * 5.2, y: out.y + dy * n * 5.2 })));
   }
-  return { kind: 'hex', cell: 4.2, tiles, homes, bases, center: { x: cx, y: cy } };
+  return { kind: 'hex', cell: 4.5, tiles, homes, bases, center: { x: cx, y: cy } };
 }
 
 export function layoutFor(mode) {

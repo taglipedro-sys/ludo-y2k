@@ -249,7 +249,7 @@ export default function Host() {
         )}
         {r.status === 'FINISHED' && !walking && <Winner state={state} apply={apply} newRoom={startNewRoom} />}
         {r.status !== 'LOBBY' && (
-          <div className="absolute bottom-3 right-5 z-20 font-pixel text-[9px] opacity-60">SALA {code} · {TRANSPORT_MODE === 'local' ? 'MODO LOCAL' : 'ONLINE'}</div>
+          <div className="absolute bottom-2 left-6 z-20 font-pixel text-[9px] opacity-60">SALA {code} · {TRANSPORT_MODE === 'local' ? 'MODO LOCAL' : 'ONLINE'}</div>
         )}
       </CrtFrame>
     </div>
@@ -279,7 +279,7 @@ function Lobby({ state, code, joinUrl, apply, newRoom }) {
               onClick={() => apply({ type: 'SET_MODE', mode: m })}>{m} JOG.</button>
           ))}
         </div>
-        <button className="pixel-btn w-full text-base" style={{ '--c': '#39ff6a' }} disabled={players.length < 2}
+        <button className="pixel-btn w-full text-base" style={{ '--c': '#39ff6a' }} disabled={players.length < 1}
           onClick={() => { unlockAudio(); sfx.turn(); apply({ type: 'START' }); }}>
           ▶ COMEÇAR
         </button>
@@ -311,53 +311,59 @@ function Game({ state, booms, log, dice, anim, onEnd }) {
   const cur = state.players.find((p) => p.id === r.current_turn_player_id);
   const sorted = [...state.players].sort((a, b) => b.points - a.points);
   return (
-    <div className="h-full flex gap-4 p-6">
-      <div className="h-full aspect-square shrink-0 relative">
-        <Board state={state} explosions={booms} anim={anim} />
+    <div className="h-full flex gap-3 py-2 pl-3 pr-2">
+      {/* tabuleiro: ocupa todo o espaço que sobra, sempre quadrado */}
+      <div className="flex-1 min-w-0 h-full grid place-items-center">
+        <div className="relative" style={{ height: '100%', maxWidth: '100%', aspectRatio: '1 / 1' }}>
+          <Board state={state} explosions={booms} anim={anim} />
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0 flex flex-col gap-3">
-        <div className="border-2 p-3 glow-box" style={{ color: cur ? COLOR_HEX[cur.color] : '#fff' }}>
-          <div className="font-pixel text-[10px] opacity-80">RODADA {r.round} · VEZ DE</div>
-          {r.reversed_movement && <div className="font-pixel text-[10px] text-neon-purple glow blink mt-1">⟲ CAOS: MOVIMENTO INVERTIDO ⟲</div>}
-          <div className="font-pixel text-xl mt-1">▶ {cur?.name}</div>
-          <div className="flex items-center gap-2 mt-2 min-h-[44px]">
+      {/* barra lateral compacta */}
+      <div className="shrink-0 flex flex-col gap-2 min-h-0" style={{ width: 'clamp(230px, 21vw, 330px)' }}>
+        <div className="border-2 p-2 glow-box" style={{ color: cur ? COLOR_HEX[cur.color] : '#fff' }}>
+          <div className="font-pixel text-[9px] opacity-80">RODADA {r.round} · VEZ DE</div>
+          {r.reversed_movement && <div className="font-pixel text-[8px] text-neon-purple glow blink mt-1">⟲ CAOS: MOVIMENTO INVERTIDO ⟲</div>}
+          <div className="font-pixel text-lg mt-1 truncate">▶ {cur?.name}</div>
+          <div className="flex items-center gap-2 mt-1 min-h-[38px]">
             {dice && dice.playerId === r.current_turn_player_id
               ? dice.dice.map((d, i) => (
-                <Dice key={`${dice.id}-${i}`} value={d} size={44} animate={false} accent={COLOR_HEX[cur.color]} glow={COLOR_HEX[cur.color]} />
+                <Dice key={`${dice.id}-${i}`} value={d} size={36} animate={false} accent={COLOR_HEX[cur.color]} glow={COLOR_HEX[cur.color]} />
               ))
-              : <span className="text-xs opacity-60">aguardando dado…</span>}
+              : <span className="text-[10px] opacity-60">aguardando dado…</span>}
             {dice && dice.playerId === r.current_turn_player_id && dice.dice.length === 2 && (
-              <span className="font-pixel text-lg text-white">= {dice.dice[0] + dice.dice[1]}</span>
+              <span className="font-pixel text-sm text-white">= {dice.dice[0] + dice.dice[1]}</span>
             )}
-            {r.turn?.double && <span className="text-[10px] text-neon-yellow">DADO DUPLO!</span>}
+            {r.turn?.double && <span className="text-[9px] text-neon-yellow">DADO DUPLO!</span>}
           </div>
         </div>
 
         <div className="border-2 border-white/20 p-2">
-          <div className="font-pixel text-[10px] mb-2 text-neon-yellow">PLACAR</div>
+          <div className="font-pixel text-[10px] mb-1 text-neon-yellow">PLACAR</div>
           {sorted.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-2 py-1 text-xs" style={{ color: COLOR_HEX[p.color] }}>
-              <span className="w-4">{i + 1}º</span>
-              <span className="w-3">{p.id === r.current_turn_player_id ? '▶' : ''}</span>
-              <span className="flex-1 truncate font-pixel text-[10px]">{p.name}{!p.connected ? ' ✕' : ''}</span>
-              <span className="text-white">🪙{p.points}</span>
-              <span className="text-white/70">🎴{p.inventory.length}</span>
-              <span className="text-white/60 text-[10px]">☠{p.stats.captured_pawns} 🍺{p.stats.shots_taken} 💨{p.stats.hookah_wins}</span>
+            <div key={p.id} className="py-0.5" style={{ color: COLOR_HEX[p.color] }}>
+              <div className="flex items-center gap-1 text-xs">
+                <span className="w-4">{i + 1}º</span>
+                <span className="w-2">{p.id === r.current_turn_player_id ? '▶' : ''}</span>
+                <span className="flex-1 truncate font-pixel text-[10px]">{p.name}{!p.connected ? ' ✕' : ''}</span>
+                <span className="text-white">🪙{p.points}</span>
+                <span className="text-white/70">🎴{p.inventory.length}</span>
+              </div>
+              <div className="text-white/60 text-[10px] pl-6">☠{p.stats.captured_pawns} 🍺{p.stats.shots_taken} 💨{p.stats.hookah_wins}</div>
             </div>
           ))}
         </div>
 
-        <div className="border-2 border-neon-purple/50 p-2 text-[11px]">
+        <div className="border-2 border-neon-purple/50 p-1.5 text-xs">
           💨 NARGUILÉ: {r.hookah_votes.length}/{state.players.filter((p) => p.connected).length || state.players.length} prontos
           {r.toll_booths.length > 0 && <span className="ml-3">🚧 {r.toll_booths.length}</span>}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden border-2 border-white/10 p-2 text-[11px] leading-tight">
+        <div className="flex-1 min-h-0 overflow-hidden border-2 border-white/10 p-1.5 text-[11px] leading-tight">
           {log.map((l, i) => <div key={i} className={i === 0 ? 'text-neon-green' : 'opacity-60'} style={{ marginBottom: 4 }}>{l}</div>)}
         </div>
 
-        <button className="pixel-btn ghost text-[10px]" style={{ '--c': '#ff2a55' }} onClick={onEnd}>■ ENCERRAR SESSÃO</button>
+        <button className="pixel-btn ghost text-[9px] py-2" style={{ '--c': '#ff2a55' }} onClick={onEnd}>■ ENCERRAR SESSÃO</button>
       </div>
     </div>
   );

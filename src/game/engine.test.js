@@ -502,3 +502,24 @@ test('pedágio fica no tabuleiro até alguém passar e PAGAR; beber não remove'
   t = run(t, { type: 'DRINK_RESOLVE', playerId: 'player_2', drinkId: toll.id, choice: 'PAY' }).state;
   assert.equal(t.room.toll_booths.length, 0); // pagou: some
 });
+
+test('1 jogador sozinho pode iniciar e jogar vários turnos seguidos', () => {
+  let s = lobby(['Ana']);
+  s = run(s, { type: 'START' }).state;
+  assert.equal(s.room.status, 'PLAYING');
+  for (let i = 0; i < 6; i++) {
+    s = run(s, { type: 'ROLL', playerId: 'player_1' }, dieRng(2)).state;
+    assert.equal(s.room.current_turn_player_id, 'player_1');
+    if (s.room.turn.phase === 'MOVE') {
+      const m = legalMoves(s, 'player_1', s.room.turn.dice[0]);
+      if (m.length) s = run(s, { type: 'MOVE', playerId: 'player_1', pawnId: m[0] }).state;
+    }
+  }
+  assert.ok(s.room.round > 1); // o turno volta para ela e a rodada avança
+  const h = run(s, { type: 'HOOKAH_VOTE', playerId: 'player_1' }, seq(0.3));
+  assert.ok(h.events.some((e) => e.type === 'HOOKAH_RESULT'));
+});
+
+test('sala vazia não inicia', () => {
+  assert.equal(reduce(createRoom('ZZZZ', 4), { type: 'START' }).error !== undefined, true);
+});

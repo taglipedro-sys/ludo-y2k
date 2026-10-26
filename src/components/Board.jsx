@@ -13,7 +13,8 @@ export default function Board({ state, explosions = [], anim = {} }) {
   const bySeat = (seat) => state.players.find((p) => p.seat === seat);
   const seatColor = (seat) => (bySeat(seat) ? COLOR_HEX[bySeat(seat).color] : NEUTRAL);
   const tileSeat = (i) => (isStartTile(cfg, i) ? i / cfg.spacing : null);
-  const size = L.cell * 0.86;
+  const cross = L.kind === 'cross';
+  const size = L.cell * (cross ? 0.96 : 0.86);
   const round2 = (n) => Math.round(n * 10) / 10;
 
   // agrupa peões na mesma casa para deslocá-los um pouco
@@ -37,7 +38,7 @@ export default function Board({ state, explosions = [], anim = {} }) {
       {L.bases.map((slots, seat) => {
         if (seat >= (mode === 6 ? 6 : 4)) return null;
         const xs = slots.map((p) => p.x), ys = slots.map((p) => p.y);
-        const pad = L.cell * 1.1;
+        const pad = L.cell * (cross ? 0.85 : 0.6);
         const col = seatColor(seat);
         return (
           <g key={`base${seat}`} opacity={bySeat(seat) ? 1 : 0.35}>
@@ -107,7 +108,7 @@ export default function Board({ state, explosions = [], anim = {} }) {
         const dx = (idx - (g.length - 1) / 2) * (L.cell * 0.32);
         const x = xy.x + dx, y = xy.y;
         const col = COLOR_HEX[pl.color];
-        const r = L.cell * 0.36;
+        const r = L.cell * (cross ? 0.43 : 0.36);
         const crit = pw.status === 'CRITICAL_STATE';
         const immune = pw.immune_until != null && pw.immune_until > round;
         return (

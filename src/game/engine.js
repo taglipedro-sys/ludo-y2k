@@ -303,7 +303,7 @@ H.SET_MODE = (s, a) => {
 
 H.START = (s, a, ev) => {
   if (s.room.status !== 'LOBBY') return 'Já iniciado.';
-  if (s.players.length < 2) return 'Mínimo de 2 jogadores.';
+  if (s.players.length < 1) return 'Entre pelo menos 1 jogador.';
   const cfg = cfgOf(s);
   s.players.forEach((p, i) => {
     p.seat = i;
@@ -618,7 +618,7 @@ H.HOOKAH_VOTE = (s, a, ev, rng) => {
   if (votes.has(p.id)) votes.delete(p.id); else votes.add(p.id);
   s.room.hookah_votes = [...votes];
   const active = activeIds(s);
-  if (active.length >= 2 && active.every((id) => votes.has(id))) {
+  if (active.length >= 1 && active.every((id) => votes.has(id))) {
     const winnerId = active[randInt(rng, active.length)];
     const w = byId(s, winnerId);
     w.points += POINTS.HOOKAH;
